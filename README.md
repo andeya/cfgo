@@ -79,10 +79,21 @@ func main() {
 	MustReg("section1", strucePtr1)
 	MustReg("section2", strucePtr2)
 	MustReg("section3", strucePtr3)
-	fmt.Printf("strucePtr1: %+v", strucePtr1)
-	fmt.Printf("strucePtr2: %+v", strucePtr2)
-	fmt.Printf("strucePtr3: %+v", strucePtr3)
+	fmt.Printf("strucePtr1: %+v\n", strucePtr1)
+	fmt.Printf("strucePtr2: %+v\n", strucePtr2)
+	fmt.Printf("strucePtr3: %+v\n", strucePtr3)
 }
+```
+
+print:
+
+```
+T reload do some thing...
+T reload do some thing...
+T2 reload do some thing...
+strucePtr1: &{F:0 B:2}
+strucePtr2: &{F:11 B:22}
+strucePtr3: &{X:xxx Y:[x y z] Z:[1 2 3] N:false}
 ```
 
 output `config/config.yaml`:

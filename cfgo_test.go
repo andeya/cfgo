@@ -43,7 +43,7 @@ func Test1(t *testing.T) {
 	MustReg("section1", strucePtr1)
 	MustReg("section2", strucePtr2)
 	MustReg("section3", strucePtr3)
-	t.Logf("strucePtr1: %+v", strucePtr1)
-	t.Logf("strucePtr2: %+v", strucePtr2)
-	t.Logf("strucePtr3: %+v", strucePtr3)
+	fmt.Printf("strucePtr1: %+v\n", strucePtr1)
+	fmt.Printf("strucePtr2: %+v\n", strucePtr2)
+	fmt.Printf("strucePtr3: %+v\n", strucePtr3)
 }
