@@ -39,6 +39,7 @@ package main
 
 import (
 	"fmt"
+	"github.com/henrylee2cn/cfgo"
 )
 
 type T struct {
@@ -76,9 +77,9 @@ func main() {
 		Y: []string{"x", "y", "z"}, //default value
 		Z: []int{1, 2, 3},          //default value
 	}
-	MustReg("section1", strucePtr1)
-	MustReg("section2", strucePtr2)
-	MustReg("section3", strucePtr3)
+	cfgo.MustReg("section1", strucePtr1)
+	cfgo.MustReg("section2", strucePtr2)
+	cfgo.MustReg("section3", strucePtr3)
 	fmt.Printf("strucePtr1: %+v\n", strucePtr1)
 	fmt.Printf("strucePtr2: %+v\n", strucePtr2)
 	fmt.Printf("strucePtr3: %+v\n", strucePtr3)
