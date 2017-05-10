@@ -1,0 +1,47 @@
+package cfgo
+
+import (
+	"fmt"
+	"testing"
+)
+
+type T struct {
+	F int `yaml:"a,omitempty"`
+	B int
+}
+
+func (t T) Reload() error {
+	fmt.Println("T reload do some thing...")
+	return nil
+}
+
+type T2 struct {
+	X string
+	Y []string `yaml:",flow"`
+	Z []int
+	N bool
+}
+
+func (t T2) Reload() error {
+	fmt.Println("T2 reload do some thing...")
+	return nil
+}
+
+func Test1(t *testing.T) {
+	strucePtr1 := &T{
+		B: 12345, //default value
+	}
+	strucePtr2 := &T{
+		B: 12345, //default value
+	}
+	strucePtr3 := &T2{
+		X: "xxx",
+		Z: []int{1, 2, 3},
+	}
+	MustReg("section1", strucePtr1)
+	MustReg("section2", strucePtr2)
+	MustReg("section3", strucePtr3)
+	t.Logf("strucePtr1: %+v", strucePtr1)
+	t.Logf("strucePtr2: %+v", strucePtr2)
+	t.Logf("strucePtr3: %+v", strucePtr3)
+}
