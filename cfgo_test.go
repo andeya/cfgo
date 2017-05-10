@@ -40,9 +40,10 @@ func Test1(t *testing.T) {
 		Y: []string{"x", "y", "z"}, //default value
 		Z: []int{1, 2, 3},          //default value
 	}
-	MustReg("section1", strucePtr1)
-	MustReg("section2", strucePtr2)
-	MustReg("section3", strucePtr3)
+	c := MustGet("config/config.yaml")
+	c.MustReg("section1", strucePtr1)
+	c.MustReg("section2", strucePtr2)
+	c.MustReg("section3", strucePtr3)
 	fmt.Printf("strucePtr1: %+v\n", strucePtr1)
 	fmt.Printf("strucePtr2: %+v\n", strucePtr2)
 	fmt.Printf("strucePtr3: %+v\n", strucePtr3)

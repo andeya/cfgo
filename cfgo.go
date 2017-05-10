@@ -48,6 +48,8 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
+var defaultCfgo = MustGet("config/config.yaml")
+
 // MustReg is similar to Reg(), but panic if having error.
 func MustReg(section string, strucePtr Setting) {
 	defaultCfgo.MustReg(section, strucePtr)
@@ -96,32 +98,39 @@ type (
 )
 
 var (
-	cfgos       = make(map[string]*Cfgo, 1)
-	lock        sync.Mutex
-	defaultCfgo = MustNew("config/config.yaml")
+	cfgos   = make(map[string]*Cfgo, 1)
+	lock    sync.Mutex
+	lineend = func() []byte {
+		if runtime.GOOS == "windows" {
+			return []byte("\r\n")
+		}
+		return []byte("\n")
+	}()
+	indent = append(lineend, []byte("  ")...)
 )
 
-// MustNew creates a new Cfgo
-func MustNew(filename string) *Cfgo {
-	c, err := New(filename)
+// MustGet creates a new Cfgo
+func MustGet(filename string) *Cfgo {
+	c, err := Get(filename)
 	if err != nil {
 		panic(err)
 	}
 	return c
 }
 
-// New creates a new Cfgo
-func New(filename string) (*Cfgo, error) {
+// Get creates or gets a Cfgo.
+func Get(filename string) (*Cfgo, error) {
 	abs, err := filepath.Abs(filename)
 	if err != nil {
 		return nil, fmt.Errorf("[cfgo] %s", err.Error())
 	}
 	lock.Lock()
 	defer lock.Unlock()
-	if _, ok := cfgos[abs]; ok {
-		return nil, fmt.Errorf("[cfgo] multiple new: %s", abs)
+	c := cfgos[abs]
+	if c != nil {
+		return c, nil
 	}
-	c := &Cfgo{
+	c = &Cfgo{
 		filename: abs,
 		config:   make(map[string]Setting),
 		sections: make([]*section, 0, 1),
@@ -307,16 +316,6 @@ func (c *Cfgo) readSection(line []byte) {
 	line = bytes.TrimPrefix(line, []byte("  "))
 	c.sections[last].single = append(c.sections[last].single, line...)
 }
-
-var (
-	lineend = func() []byte {
-		if runtime.GOOS == "windows" {
-			return []byte("\r\n")
-		}
-		return []byte("\n")
-	}()
-	indent = append(lineend, []byte("  ")...)
-)
 
 type (
 	sections []*section
