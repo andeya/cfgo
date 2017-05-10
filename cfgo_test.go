@@ -29,14 +29,16 @@ func (t T2) Reload() error {
 
 func Test1(t *testing.T) {
 	strucePtr1 := &T{
-		B: 12345, //default value
+		B: 2, //default value
 	}
 	strucePtr2 := &T{
-		B: 12345, //default value
+		F: 11, //default value
+		B: 22, //default value
 	}
 	strucePtr3 := &T2{
-		X: "xxx",
-		Z: []int{1, 2, 3},
+		X: "xxx",                   //default value
+		Y: []string{"x", "y", "z"}, //default value
+		Z: []int{1, 2, 3},          //default value
 	}
 	MustReg("section1", strucePtr1)
 	MustReg("section2", strucePtr2)
