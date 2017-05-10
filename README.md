@@ -14,7 +14,7 @@ Conflicting names result in a runtime error.
 
 The field tag format accepted is:
 
-    `(...) yaml:"[<key>][,<flag1>[,<flag2>]]" (...)`
+    (...) yaml:"[<key>][,<flag1>[,<flag2>]]" (...)
 
 The following flags are currently supported:
 
