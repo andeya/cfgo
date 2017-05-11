@@ -26,19 +26,26 @@ func main() {
 		},
 	}
 
-	// output: config/config3.yaml
-	{
-		c := cfgo.MustGet("config/config3.yaml")
-		c.MustReg("section", strucePtr)
-		fmt.Printf("strucePtr(config3.yaml): %+v\n\n", strucePtr)
-	}
-
 	// output: config/config.yaml
-	{
-		c := cfgo.MustGet("config/config.yaml")
-		c.MustReg("section", strucePtr)
-	}
+	c := cfgo.MustGet("config/config.yaml")
+	c.MustReg("section", strucePtr)
 	// or
 	// cfgo.MustReg("section", strucePtr)
+
 	fmt.Printf("strucePtr(config.yaml): %+v\n\n", strucePtr)
+
+	// output: config/config3.yaml
+	c3 := cfgo.MustGet("config/config3.yaml")
+	c3.MustReg("section", strucePtr)
+	fmt.Printf("strucePtr(config3.yaml): %+v\n\n", strucePtr)
+
+	fmt.Printf("-----------------------------------------------------------\n\n")
+
+	fmt.Printf("config.yaml content:\n%s\n\n", c.Content())
+	// or
+	// fmt.Printf("config.yaml content:\n%s\n\n", cfgo.Content())
+
+	fmt.Printf("-----------------------------------------------------------\n\n")
+
+	fmt.Printf("config3.yaml content:\n%s\n\n", c3.Content())
 }

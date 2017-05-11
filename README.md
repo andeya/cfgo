@@ -143,23 +143,29 @@ func main() {
 		},
 	}
 
-	// output: config/config3.yaml
-	{
-		c := cfgo.MustGet("config/config3.yaml")
-		c.MustReg("section", strucePtr)
-		fmt.Printf("strucePtr(config3.yaml): %+v\n\n", strucePtr)
-	}
-
 	// output: config/config.yaml
-	{
-		c := cfgo.MustGet("config/config.yaml")
-		c.MustReg("section", strucePtr)
-	}
+	c := cfgo.MustGet("config/config.yaml")
+	c.MustReg("section", strucePtr)
 	// or
 	// cfgo.MustReg("section", strucePtr)
-	fmt.Printf("strucePtr(config.yaml): %+v\n\n", strucePtr)
-}
 
+	fmt.Printf("strucePtr(config.yaml): %+v\n\n", strucePtr)
+
+	// output: config/config3.yaml
+	c3 := cfgo.MustGet("config/config3.yaml")
+	c3.MustReg("section", strucePtr)
+	fmt.Printf("strucePtr(config3.yaml): %+v\n\n", strucePtr)
+
+	fmt.Printf("-----------------------------------------------------------\n\n")
+
+	fmt.Printf("config.yaml content:\n%s\n\n", c.Content())
+	// or
+	// fmt.Printf("config.yaml content:\n%s\n\n", cfgo.Content())
+
+	fmt.Printf("-----------------------------------------------------------\n\n")
+
+	fmt.Printf("config3.yaml content:\n%s\n\n", c3.Content())
+}
 ```
 
 print:
@@ -171,10 +177,41 @@ strucePtr1(config.yaml): &{F:1 B:2}
 module_2: T2 reload do some thing...
 strucePtr2(config.yaml): &{X:xxx Y:[x y z] Z:[1 2 3] N:false}
 
-strucePtr(config3.yaml): &{C:c T1:{F:0 B:2}}
-
 main T reload do some thing...
 strucePtr(config.yaml): &{C:c T1:{F:0 B:2}}
+
+main T reload do some thing...
+strucePtr(config3.yaml): &{C:c T1:{F:0 B:2}}
+
+-----------------------------------------------------------
+
+config.yaml content:
+section:
+  c: c
+  t1:
+    b: 2
+
+section1:
+  a: 1
+  b: 2
+
+section2:
+  x: xxx
+  "y": [x, "y", z]
+  z:
+  - 1
+  - 2
+  - 3
+  "n": false
+
+
+-----------------------------------------------------------
+
+config3.yaml content:
+section:
+  c: c
+  t1:
+    b: 2
 ```
 
 output `config/config.yaml`:

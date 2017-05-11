@@ -48,16 +48,21 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-var defaultCfgo = MustGet("config/config.yaml")
+var Default = MustGet("config/config.yaml")
 
 // MustReg is similar to Reg(), but panic if having error.
 func MustReg(section string, strucePtr Setting) {
-	defaultCfgo.MustReg(section, strucePtr)
+	Default.MustReg(section, strucePtr)
 }
 
 // Reg registers config section to default config file 'config/config.yaml'.
 func Reg(section string, strucePtr Setting) error {
-	return defaultCfgo.Reg(section, strucePtr)
+	return Default.Reg(section, strucePtr)
+}
+
+// Content returns yaml config bytes.
+func Content() []byte {
+	return Default.Content()
 }
 
 // ReloadAll reloads all configs.
@@ -78,7 +83,7 @@ func ReloadAll() error {
 
 // Reload reloads default config.
 func Reload() error {
-	return defaultCfgo.Reload()
+	return Default.Reload()
 }
 
 type (
@@ -88,7 +93,7 @@ type (
 		config   map[string]Setting
 		content  []byte
 		sections sections
-		lc       sync.Mutex
+		lc       sync.RWMutex
 	}
 	// Setting must be struct pointer
 	Setting interface {
@@ -173,6 +178,13 @@ func (c *Cfgo) Reg(section string, strucePtr Setting) error {
 		}
 		return nil
 	})
+}
+
+// Content returns yaml config bytes.
+func (c *Cfgo) Content() []byte {
+	c.lc.RLock()
+	defer c.lc.RUnlock()
+	return c.content
 }
 
 // Reload reloads config.
@@ -280,22 +292,25 @@ LOOP:
 		})
 	}
 	sort.Sort(c.sections)
+	content := bytes.NewBuffer(c.content[:0])
+	w := io.MultiWriter(file, content)
 	for i, section := range c.sections {
 		if i != 0 {
-			_, err = file.Write(lineend)
+			_, err = w.Write(lineend)
 			if err != nil {
 				return err
 			}
 		}
-		_, err = file.Write(append([]byte(section.title+":"), lineend...))
+		_, err = w.Write(append([]byte(section.title+":"), lineend...))
 		if err != nil {
 			return err
 		}
-		_, err = file.Write(section.united)
+		_, err = w.Write(section.united)
 		if err != nil {
 			return err
 		}
 	}
+	c.content = content.Bytes()
 	return nil
 }
 
