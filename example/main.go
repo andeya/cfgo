@@ -13,9 +13,9 @@ type T struct {
 	m1.T1
 }
 
-func (t *T) Reload() error {
-	fmt.Println("T reload do some thing...")
-	return nil
+func (t *T) Reload(bind cfgo.BindFunc) error {
+	fmt.Println("main T reload do some thing...")
+	return bind()
 }
 
 func main() {

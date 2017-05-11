@@ -51,9 +51,9 @@ type T1 struct {
 	B int
 }
 
-func (t *T1) Reload() error {
+func (t *T1) Reload(bind cfgo.BindFunc) error {
 	fmt.Println("module_1: T1 reload do some thing...")
-	return nil
+	return bind()
 }
 
 func init() {
@@ -90,9 +90,9 @@ type T2 struct {
 	N bool
 }
 
-func (t *T2) Reload() error {
+func (t *T2) Reload(bind cfgo.BindFunc) error {
 	fmt.Println("module_2: T2 reload do some thing...")
-	return nil
+	return bind()
 }
 
 func init() {
@@ -130,9 +130,9 @@ type T struct {
 	m1.T1
 }
 
-func (t *T) Reload() error {
-	fmt.Println("T reload do some thing...")
-	return nil
+func (t *T) Reload(bind cfgo.BindFunc) error {
+	fmt.Println("main T reload do some thing...")
+	return bind()
 }
 
 func main() {
@@ -171,10 +171,9 @@ strucePtr1(config.yaml): &{F:1 B:2}
 module_2: T2 reload do some thing...
 strucePtr2(config.yaml): &{X:xxx Y:[x y z] Z:[1 2 3] N:false}
 
-T reload do some thing...
 strucePtr(config3.yaml): &{C:c T1:{F:0 B:2}}
 
-T reload do some thing...
+main T reload do some thing...
 strucePtr(config.yaml): &{C:c T1:{F:0 B:2}}
 ```
 

@@ -28,7 +28,7 @@
 //                  they were part of the outer struct. For maps, keys must
 //                  not conflict with the yaml keys of other struct fields.
 //
-// In addition, if the key is "-", the field is ignored.
+// In addition, if the key is `-`, the field is ignored.
 //
 package cfgo
 
@@ -93,8 +93,10 @@ type (
 	// Setting must be struct pointer
 	Setting interface {
 		// load or reload config to app
-		Reload() error
+		Reload(bind BindFunc) error
 	}
+	// BindFunc bind config to setting
+	BindFunc func() error
 )
 
 var (
@@ -158,35 +160,33 @@ func (c *Cfgo) Reg(section string, strucePtr Setting) error {
 	}
 
 	c.lc.Lock()
+	defer c.lc.Unlock()
+
 	c.config[section] = strucePtr
-	c.lc.Unlock()
 
 	// sync config
-	return c.sync(strucePtr.Reload)
+	return c.sync(func(s string, setting Setting, b []byte) error {
+		if s == section {
+			return setting.Reload(func() error {
+				return yaml.Unmarshal(b, setting)
+			})
+		}
+		return nil
+	})
 }
 
 // Reload reloads config.
 func (c *Cfgo) Reload() error {
-	return c.sync(c.reload)
-}
-
-func (c *Cfgo) reload() error {
-	// load config
-	var errs []string
-	for _, v := range c.config {
-		if err := v.Reload(); err != nil {
-			errs = append(errs, err.Error())
-		}
-	}
-	if len(errs) > 0 {
-		return fmt.Errorf("%s", strings.Join(errs, string(lineend)))
-	}
-	return nil
-}
-
-func (c *Cfgo) sync(load func() error) (err error) {
 	c.lc.Lock()
 	defer c.lc.Unlock()
+	return c.sync(func(_ string, setting Setting, b []byte) error {
+		return setting.Reload(func() error {
+			return yaml.Unmarshal(b, setting)
+		})
+	})
+}
+
+func (c *Cfgo) sync(load func(section string, setting Setting, b []byte) error) (err error) {
 	c.sections = make([]*section, 0, len(c.config))
 	defer func() {
 		if err != nil {
@@ -200,13 +200,7 @@ func (c *Cfgo) sync(load func() error) (err error) {
 	}
 
 	// unmarshal
-	err = c.read()
-	if err != nil {
-		return
-	}
-
-	// load config
-	err = load()
+	err = c.read(load)
 	if err != nil {
 		return
 	}
@@ -220,7 +214,7 @@ func (c *Cfgo) sync(load func() error) (err error) {
 	return nil
 }
 
-func (c *Cfgo) read() (err error) {
+func (c *Cfgo) read(load func(section string, setting Setting, b []byte) error) (err error) {
 	file, err := os.OpenFile(c.filename, os.O_RDONLY|os.O_SYNC|os.O_CREATE, 0666)
 	if err != nil {
 		return
@@ -238,16 +232,21 @@ func (c *Cfgo) read() (err error) {
 		return
 	}
 
+	// load config
+	var errs []string
 	for k, v := range c.config {
 		for _, section := range c.sections {
 			if k != section.title {
 				continue
 			}
-			err = yaml.Unmarshal(section.single, v)
+			err = load(k, v, section.single)
 			if err != nil {
-				return
+				errs = append(errs, err.Error())
 			}
 		}
+	}
+	if len(errs) > 0 {
+		return fmt.Errorf("%s", strings.Join(errs, string(lineend)))
 	}
 	return nil
 }
