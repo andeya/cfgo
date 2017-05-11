@@ -50,7 +50,7 @@ type T1 struct {
 	B int
 }
 
-func (t T1) Reload() error {
+func (t *T1) Reload() error {
 	fmt.Println("module_1: T1 reload do some thing...")
 	return nil
 }
@@ -89,7 +89,7 @@ type T2 struct {
 	N bool
 }
 
-func (t T2) Reload() error {
+func (t *T2) Reload() error {
 	fmt.Println("module_2: T2 reload do some thing...")
 	return nil
 }
@@ -129,7 +129,7 @@ type T struct {
 	m1.T1
 }
 
-func (t T) Reload() error {
+func (t *T) Reload() error {
 	fmt.Println("T reload do some thing...")
 	return nil
 }

@@ -13,7 +13,7 @@ type T2 struct {
 	N bool
 }
 
-func (t T2) Reload() error {
+func (t *T2) Reload() error {
 	fmt.Println("module_2: T2 reload do some thing...")
 	return nil
 }

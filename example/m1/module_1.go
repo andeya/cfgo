@@ -11,7 +11,7 @@ type T1 struct {
 	B int
 }
 
-func (t T1) Reload() error {
+func (t *T1) Reload() error {
 	fmt.Println("module_1: T1 reload do some thing...")
 	return nil
 }
