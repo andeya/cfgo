@@ -1,4 +1,5 @@
-# cfgo
+# cfgo  [![GoDoc](https://godoc.org/github.com/tsuna/gohbase?status.png)](https://godoc.org/github.com/henrylee2cn/cfgo)
+
 Cfgo from the YAML document, bi-directional synchronous multi-module configuration.
 
 The structure of the generated document will reflect the structure of the value itself.
