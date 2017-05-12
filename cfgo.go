@@ -315,10 +315,12 @@ LOOP:
 }
 
 func (c *Cfgo) readSection(line []byte) {
-	if len(line) > 0 && !bytes.HasPrefix(line, []byte(" ")) && line[len(line)-1] == ':' {
-		line = bytes.TrimSpace(line)
-		line = bytes.TrimRight(line, ":")
-		c.sections = append(c.sections, &section{title: string(line)})
+	if len(line) > 0 && !bytes.HasPrefix(line, []byte(" ")) {
+		if line[len(line)-1] == ':' {
+			line = bytes.TrimSpace(line)
+			line = bytes.TrimRight(line, ":")
+			c.sections = append(c.sections, &section{title: string(line)})
+		}
 		return
 	}
 	last := len(c.sections) - 1
