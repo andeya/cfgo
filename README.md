@@ -33,7 +33,7 @@ The following flags are currently supported:
 
 In addition, if the key is `-`, the field is ignored.
 
-# example
+# register config
 
 - m1/module_1.go
 
@@ -254,7 +254,7 @@ section:
 
 ```
 
-# custom
+# custom config
 
 Cfgo allows to custom non-automated configuration in yaml file.
 
