@@ -37,65 +37,19 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"log"
 	"os"
-	"os/signal"
 	"path/filepath"
 	"reflect"
 	"runtime"
 	"sort"
 	"strings"
 	"sync"
-	"syscall"
 
 	"gopkg.in/yaml.v2"
 )
 
-var (
-	Default   = MustGet("config/config.yaml")
-	logchan   = make(chan *Msg, 100)
-	getOnce   sync.Once
-	hasLogger bool
-)
-
-func GetLogchan() (c <-chan *Msg, ok bool) {
-	getOnce.Do(func() {
-		c = logchan
-		ok = true
-		hasLogger = true
-	})
-	return
-}
-
-type Msg struct {
-	Ok  bool
-	Txt string
-}
-
-func init() {
-	go func() {
-		chSignal := make(chan os.Signal)
-		defer signal.Stop(chSignal)
-		signal.Notify(chSignal, syscall.SIGUSR1)
-		for {
-			<-chSignal
-			err := ReloadAll()
-			var msg = new(Msg)
-			if err != nil {
-				msg.Ok = false
-				msg.Txt = "reload config: " + err.Error()
-			} else {
-				msg.Ok = true
-				msg.Txt = "reload config ok"
-			}
-			if hasLogger {
-				logchan <- msg
-			} else {
-				log.Println(msg.Txt)
-			}
-		}
-	}()
-}
+// Default default config
+var Default = MustGet("config/config.yaml")
 
 // MustReg is similar to Reg(), but panic if having error.
 func MustReg(section string, strucePtr Setting) {
