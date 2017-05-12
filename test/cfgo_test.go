@@ -28,6 +28,7 @@ func Test1(t *testing.T) {
 	}
 
 	// output: config/config.yaml
+
 	c := cfgo.MustGet("config/config.yaml")
 	c.MustReg("section", strucePtr)
 	// or
@@ -36,8 +37,10 @@ func Test1(t *testing.T) {
 	fmt.Printf("strucePtr(config/config.yaml): %+v\n\n", strucePtr)
 
 	// output: config/config3.yaml
+
 	c3 := cfgo.MustGet("config/config3.yaml")
 	c3.MustReg("section", strucePtr)
+
 	fmt.Printf("strucePtr(config/config3.yaml): %+v\n\n", strucePtr)
 
 	fmt.Printf(" ----------------------------------------------------------- \n\n")

@@ -144,6 +144,7 @@ func main() {
 	}
 
 	// output: config/config.yaml
+
 	c := cfgo.MustGet("config/config.yaml")
 	c.MustReg("section", strucePtr)
 	// or
@@ -152,8 +153,10 @@ func main() {
 	fmt.Printf("strucePtr(config/config.yaml): %+v\n\n", strucePtr)
 
 	// output: config/config3.yaml
+	
 	c3 := cfgo.MustGet("config/config3.yaml")
 	c3.MustReg("section", strucePtr)
+	
 	fmt.Printf("strucePtr(config/config3.yaml): %+v\n\n", strucePtr)
 
 	fmt.Printf(" ----------------------------------------------------------- \n\n")
@@ -213,11 +216,6 @@ section:
   c: c
   t1:
     b: 2
-
-# ------------------------- non-automated configuration -------------------------
-
-custom:
-  true
 
 ```
 
