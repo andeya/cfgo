@@ -20,7 +20,7 @@ func (t *T) Reload(bind cfgo.BindFunc) error {
 }
 
 func Test1(t *testing.T) {
-	strucePtr := &T{
+	structPtr := &T{
 		C: "c",
 		T1: m1.T1{
 			B: 2, //default value
@@ -30,18 +30,18 @@ func Test1(t *testing.T) {
 	// output: config/config.yaml
 
 	c := cfgo.MustGet("config/config.yaml")
-	c.MustReg("section", strucePtr)
+	c.MustReg("section", structPtr)
 	// or
-	// cfgo.MustReg("section", strucePtr)
+	// cfgo.MustReg("section", structPtr)
 
-	fmt.Printf("strucePtr(config/config.yaml): %+v\n\n", strucePtr)
+	fmt.Printf("structPtr(config/config.yaml): %+v\n\n", structPtr)
 
 	// output: config/config3.yaml
 
 	c3 := cfgo.MustGet("config/config3.yaml")
-	c3.MustReg("section", strucePtr)
+	c3.MustReg("section", structPtr)
 
-	fmt.Printf("strucePtr(config/config3.yaml): %+v\n\n", strucePtr)
+	fmt.Printf("structPtr(config/config3.yaml): %+v\n\n", structPtr)
 
 	fmt.Printf(" ----------------------------------------------------------- \n\n")
 

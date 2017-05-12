@@ -57,17 +57,17 @@ func (t *T1) Reload(bind cfgo.BindFunc) error {
 }
 
 func init() {
-	strucePtr1 := &T1{
+	structPtr1 := &T1{
 		F: 1, //default value
 		B: 2, //default value
 	}
 	{
 		c := cfgo.MustGet("config/config.yaml")
-		c.MustReg("section1", strucePtr1)
+		c.MustReg("section1", structPtr1)
 	}
 	// or
-	// cfgo.MustReg("section1", strucePtr1)
-	fmt.Printf("strucePtr1(config/config.yaml): %+v\n\n", strucePtr1)
+	// cfgo.MustReg("section1", structPtr1)
+	fmt.Printf("structPtr1(config/config.yaml): %+v\n\n", structPtr1)
 }
 
 ```
@@ -96,18 +96,18 @@ func (t *T2) Reload(bind cfgo.BindFunc) error {
 }
 
 func init() {
-	strucePtr2 := &T2{
+	structPtr2 := &T2{
 		X: "xxx",                   //default value
 		Y: []string{"x", "y", "z"}, //default value
 		Z: []int{1, 2, 3},          //default value
 	}
 	{
 		c := cfgo.MustGet("config/config.yaml")
-		c.MustReg("section2", strucePtr2)
+		c.MustReg("section2", structPtr2)
 	}
 	// or
-	// cfgo.MustReg("section2", strucePtr2)
-	fmt.Printf("strucePtr2(config/config.yaml): %+v\n\n", strucePtr2)
+	// cfgo.MustReg("section2", structPtr2)
+	fmt.Printf("structPtr2(config/config.yaml): %+v\n\n", structPtr2)
 }
 
 ```
@@ -136,7 +136,7 @@ func (t *T) Reload(bind cfgo.BindFunc) error {
 }
 
 func main() {
-	strucePtr := &T{
+	structPtr := &T{
 		C: "c",
 		T1: m1.T1{
 			B: 2, //default value
@@ -146,18 +146,18 @@ func main() {
 	// output: config/config.yaml
 
 	c := cfgo.MustGet("config/config.yaml")
-	c.MustReg("section", strucePtr)
+	c.MustReg("section", structPtr)
 	// or
-	// cfgo.MustReg("section", strucePtr)
+	// cfgo.MustReg("section", structPtr)
 
-	fmt.Printf("strucePtr(config/config.yaml): %+v\n\n", strucePtr)
+	fmt.Printf("structPtr(config/config.yaml): %+v\n\n", structPtr)
 
 	// output: config/config3.yaml
 	
 	c3 := cfgo.MustGet("config/config3.yaml")
-	c3.MustReg("section", strucePtr)
+	c3.MustReg("section", structPtr)
 	
-	fmt.Printf("strucePtr(config/config3.yaml): %+v\n\n", strucePtr)
+	fmt.Printf("structPtr(config/config3.yaml): %+v\n\n", structPtr)
 
 	fmt.Printf(" ----------------------------------------------------------- \n\n")
 
@@ -175,17 +175,17 @@ print:
 
 ```
 module_1: T1 reload do some thing...
-strucePtr1(config/config.yaml): &{F:1 B:2}
+structPtr1(config/config.yaml): &{F:1 B:2}
 
 module_2: T2 reload do some thing...
-strucePtr2(config/config.yaml): &{X:xxx Y:[x y z] Z:[1 2 3] N:false}
+structPtr2(config/config.yaml): &{X:xxx Y:[x y z] Z:[1 2 3] N:false}
 
 === RUN   Test1
 main T reload do some thing...
-strucePtr(config/config.yaml): &{C:c T1:{F:0 B:2}}
+structPtr(config/config.yaml): &{C:c T1:{F:0 B:2}}
 
 main T reload do some thing...
-strucePtr(config/config3.yaml): &{C:c T1:{F:0 B:2}}
+structPtr(config/config3.yaml): &{C:c T1:{F:0 B:2}}
 
  ----------------------------------------------------------- 
 

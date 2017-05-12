@@ -17,15 +17,15 @@ func (t *T1) Reload(bind cfgo.BindFunc) error {
 }
 
 func init() {
-	strucePtr1 := &T1{
+	structPtr1 := &T1{
 		F: 1, //default value
 		B: 2, //default value
 	}
 	{
 		c := cfgo.MustGet("config/config.yaml")
-		c.MustReg("section1", strucePtr1)
+		c.MustReg("section1", structPtr1)
 	}
 	// or
-	// cfgo.MustReg("section1", strucePtr1)
-	fmt.Printf("strucePtr1(config/config.yaml): %+v\n\n", strucePtr1)
+	// cfgo.MustReg("section1", structPtr1)
+	fmt.Printf("structPtr1(config/config.yaml): %+v\n\n", structPtr1)
 }
