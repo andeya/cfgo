@@ -2,8 +2,3 @@ section:
   c: c
   t1:
     b: 2
-
-# ------------------------- non-automated configuration -------------------------
-
-custom:
-  true
