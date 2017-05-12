@@ -62,18 +62,14 @@ func Default() *Cfgo {
 }
 
 // MustReg is similar to Reg(), but panic if having error.
-func MustReg(section string, strucePtr Setting) {
-	Default().MustReg(section, strucePtr)
+func MustReg(section string, structPtr Syncer) {
+	Default().MustReg(section, structPtr)
 }
 
 // Reg registers config section to default config file 'config/config.yaml'.
-func Reg(section string, strucePtr Setting) error {
-	return Default().Reg(section, strucePtr)
-}
-
-// Content returns default yaml config bytes.
-func Content() []byte {
-	return Default().Content()
+// Automatic callback Reload() to load or reload config.
+func Reg(section string, structPtr Syncer) error {
+	return Default().Reg(section, structPtr)
 }
 
 // GetConfig returns default config section.
@@ -84,6 +80,11 @@ func GetConfig(section string) (interface{}, bool) {
 // BindConfig returns default config section copy.
 func BindConfig(section string, v interface{}) error {
 	return Default().BindConfig(section, v)
+}
+
+// Content returns default yaml config bytes.
+func Content() []byte {
+	return Default().Content()
 }
 
 // ReloadAll reloads all configs.
@@ -113,14 +114,14 @@ type (
 		filename        string
 		originalContent []byte
 		content         []byte
-		regConfig       map[string]Setting
+		regConfig       map[string]Syncer
 		otherConfig     map[string]interface{}
 		regSections     Sections
 		otherSections   Sections
 		lc              sync.RWMutex
 	}
-	// Setting must be struct pointer
-	Setting interface {
+	// Syncer must be struct pointer
+	Syncer interface {
 		// load or reload config to app
 		Reload(bind BindFunc) error
 	}
@@ -166,7 +167,7 @@ func Get(filename string) (*Cfgo, error) {
 		filename:        abs,
 		originalContent: []byte{},
 		content:         []byte{},
-		regConfig:       make(map[string]Setting),
+		regConfig:       make(map[string]Syncer),
 		otherConfig:     make(map[string]interface{}),
 		regSections:     make([]*Section, 0, 1),
 		otherSections:   make([]*Section, 0),
@@ -180,44 +181,38 @@ func Get(filename string) (*Cfgo, error) {
 }
 
 // MustReg is similar to Reg(), but panic if having error.
-func (c *Cfgo) MustReg(section string, strucePtr Setting) {
-	err := c.Reg(section, strucePtr)
+func (c *Cfgo) MustReg(section string, structPtr Syncer) {
+	err := c.Reg(section, structPtr)
 	if err != nil {
 		panic(err)
 	}
 }
 
 // Reg registers config section to config file.
-func (c *Cfgo) Reg(section string, strucePtr Setting) error {
+// Automatic callback Reload() to load or reload config.
+func (c *Cfgo) Reg(section string, structPtr Syncer) error {
 	c.lc.Lock()
 	defer c.lc.Unlock()
 
-	t := reflect.TypeOf(strucePtr)
+	t := reflect.TypeOf(structPtr)
 	if t.Kind() != reflect.Ptr || t.Elem().Kind() != reflect.Struct {
-		return fmt.Errorf("[cfgo] Setting type must be struct pointer:\nsection: %s\nSetting: %s", section, t.String())
+		return fmt.Errorf("[cfgo] not a struct pointer:\nsection: %s\nstructPtr: %s", section, t.String())
 	}
-	if _, ok := c.regConfig[section]; ok {
-		return fmt.Errorf("[cfgo] multiple register:\nsection: %s\nSetting: %s", section, t.String())
+	if s, ok := c.regConfig[section]; ok {
+		return fmt.Errorf("[cfgo] multiple section: %s\nexisted: %s | adding: %s", section, reflect.TypeOf(s).String(), t.String())
 	}
 
-	c.regConfig[section] = strucePtr
+	c.regConfig[section] = structPtr
 
 	// sync config
-	return c.sync(func(s string, setting Setting, b []byte) error {
+	return c.sync(func(s string, _ Syncer, b []byte) error {
 		if s == section {
-			return setting.Reload(func() error {
-				return yaml.Unmarshal(b, setting)
+			return structPtr.Reload(func() error {
+				return yaml.Unmarshal(b, structPtr)
 			})
 		}
 		return nil
 	})
-}
-
-// Content returns yaml config bytes.
-func (c *Cfgo) Content() []byte {
-	c.lc.RLock()
-	defer c.lc.RUnlock()
-	return c.content
 }
 
 // GetConfig returns yaml config section.
@@ -248,6 +243,13 @@ func (c *Cfgo) BindConfig(section string, v interface{}) error {
 	return fmt.Errorf("not exist config section: %s", section)
 }
 
+// Content returns yaml config bytes.
+func (c *Cfgo) Content() []byte {
+	c.lc.RLock()
+	defer c.lc.RUnlock()
+	return c.content
+}
+
 // Reload reloads config.
 func (c *Cfgo) Reload() error {
 	c.lc.Lock()
@@ -256,7 +258,7 @@ func (c *Cfgo) Reload() error {
 }
 
 func (c *Cfgo) reload() error {
-	return c.sync(func(_ string, setting Setting, b []byte) error {
+	return c.sync(func(_ string, setting Syncer, b []byte) error {
 		return setting.Reload(func() error {
 			return yaml.Unmarshal(b, setting)
 		})
@@ -271,7 +273,7 @@ func (c *Cfgo) clean() {
 	c.otherSections = c.otherSections[:0]
 }
 
-func (c *Cfgo) sync(load func(section string, setting Setting, b []byte) error) (err error) {
+func (c *Cfgo) sync(load func(section string, setting Syncer, b []byte) error) (err error) {
 	c.clean()
 	defer func() {
 		if err != nil {
@@ -311,7 +313,7 @@ func (c *Cfgo) sync(load func(section string, setting Setting, b []byte) error) 
 	return nil
 }
 
-func (c *Cfgo) read(load func(section string, setting Setting, b []byte) error) (err error) {
+func (c *Cfgo) read(load func(section string, setting Syncer, b []byte) error) (err error) {
 	file, err := os.OpenFile(c.filename, os.O_RDONLY|os.O_SYNC|os.O_CREATE, 0666)
 	if err != nil {
 		return
