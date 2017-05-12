@@ -27,5 +27,5 @@ func init() {
 	}
 	// or
 	// cfgo.MustReg("section1", strucePtr1)
-	fmt.Printf("strucePtr1(config.yaml): %+v\n\n", strucePtr1)
+	fmt.Printf("strucePtr1(config/config.yaml): %+v\n\n", strucePtr1)
 }

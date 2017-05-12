@@ -33,22 +33,69 @@
 package cfgo
 
 import (
-	"bufio"
 	"bytes"
 	"fmt"
 	"io"
+	"io/ioutil"
+	"log"
 	"os"
+	"os/signal"
 	"path/filepath"
 	"reflect"
 	"runtime"
 	"sort"
 	"strings"
 	"sync"
+	"syscall"
 
 	"gopkg.in/yaml.v2"
 )
 
-var Default = MustGet("config/config.yaml")
+var (
+	Default   = MustGet("config/config.yaml")
+	logchan   = make(chan *Msg, 100)
+	getOnce   sync.Once
+	hasLogger bool
+)
+
+func GetLogchan() (c <-chan *Msg, ok bool) {
+	getOnce.Do(func() {
+		c = logchan
+		ok = true
+		hasLogger = true
+	})
+	return
+}
+
+type Msg struct {
+	Ok  bool
+	Txt string
+}
+
+func init() {
+	go func() {
+		chSignal := make(chan os.Signal)
+		defer signal.Stop(chSignal)
+		signal.Notify(chSignal, syscall.SIGUSR1)
+		for {
+			<-chSignal
+			err := ReloadAll()
+			var msg = new(Msg)
+			if err != nil {
+				msg.Ok = false
+				msg.Txt = "reload config: " + err.Error()
+			} else {
+				msg.Ok = true
+				msg.Txt = "reload config ok"
+			}
+			if hasLogger {
+				logchan <- msg
+			} else {
+				log.Println(msg.Txt)
+			}
+		}
+	}()
+}
 
 // MustReg is similar to Reg(), but panic if having error.
 func MustReg(section string, strucePtr Setting) {
@@ -60,9 +107,19 @@ func Reg(section string, strucePtr Setting) error {
 	return Default.Reg(section, strucePtr)
 }
 
-// Content returns yaml config bytes.
+// Content returns default yaml config bytes.
 func Content() []byte {
 	return Default.Content()
+}
+
+// GetConfig returns default config section.
+func GetConfig(section string) (interface{}, bool) {
+	return Default.GetConfig(section)
+}
+
+// BindConfig returns default config section copy.
+func BindConfig(section string, v interface{}) error {
+	return Default.BindConfig(section, v)
 }
 
 // ReloadAll reloads all configs.
@@ -89,11 +146,14 @@ func Reload() error {
 type (
 	// Cfgo a whole config
 	Cfgo struct {
-		filename string
-		config   map[string]Setting
-		content  []byte
-		sections sections
-		lc       sync.RWMutex
+		filename        string
+		originalContent []byte
+		content         []byte
+		regConfig       map[string]Setting
+		allConfig       map[string]interface{}
+		regSections     Sections
+		otherSections   Sections
+		lc              sync.RWMutex
 	}
 	// Setting must be struct pointer
 	Setting interface {
@@ -113,7 +173,8 @@ var (
 		}
 		return []byte("\n")
 	}()
-	indent = append(lineend, []byte("  ")...)
+	indent       = append(lineend, []byte("  ")...)
+	dividingLine = append([]byte("# ------------------------- non-automated configuration -------------------------"), lineend...)
 )
 
 // MustGet creates a new Cfgo
@@ -138,9 +199,11 @@ func Get(filename string) (*Cfgo, error) {
 		return c, nil
 	}
 	c = &Cfgo{
-		filename: abs,
-		config:   make(map[string]Setting),
-		sections: make([]*section, 0, 1),
+		filename:      abs,
+		regConfig:     make(map[string]Setting),
+		allConfig:     make(map[string]interface{}),
+		regSections:   make([]*Section, 0, 1),
+		otherSections: make([]*Section, 0),
 	}
 	cfgos[abs] = c
 	return c, nil
@@ -160,14 +223,14 @@ func (c *Cfgo) Reg(section string, strucePtr Setting) error {
 	if t.Kind() != reflect.Ptr || t.Elem().Kind() != reflect.Struct {
 		return fmt.Errorf("[cfgo] Setting type must be struct pointer:\nsection: %s\nSetting: %s", section, t.String())
 	}
-	if _, ok := c.config[section]; ok {
+	if _, ok := c.regConfig[section]; ok {
 		return fmt.Errorf("[cfgo] multiple register:\nsection: %s\nSetting: %s", section, t.String())
 	}
 
 	c.lc.Lock()
 	defer c.lc.Unlock()
 
-	c.config[section] = strucePtr
+	c.regConfig[section] = strucePtr
 
 	// sync config
 	return c.sync(func(s string, setting Setting, b []byte) error {
@@ -187,6 +250,34 @@ func (c *Cfgo) Content() []byte {
 	return c.content
 }
 
+// GetConfig returns yaml config section.
+func (c *Cfgo) GetConfig(section string) (interface{}, bool) {
+	c.lc.RLock()
+	defer c.lc.RUnlock()
+	if v, ok := c.regConfig[section]; ok {
+		return v, ok
+	}
+	v, ok := c.allConfig[section]
+	return v, ok
+}
+
+// BindConfig returns yaml config section copy.
+func (c *Cfgo) BindConfig(section string, v interface{}) error {
+	c.lc.RLock()
+	defer c.lc.RUnlock()
+	for _, s := range c.regSections {
+		if section == s.title {
+			return yaml.Unmarshal(s.single, v)
+		}
+	}
+	for _, s := range c.otherSections {
+		if section == s.title {
+			return yaml.Unmarshal(s.single, v)
+		}
+	}
+	return fmt.Errorf("config section not exist: %s", section)
+}
+
 // Reload reloads config.
 func (c *Cfgo) Reload() error {
 	c.lc.Lock()
@@ -199,7 +290,7 @@ func (c *Cfgo) Reload() error {
 }
 
 func (c *Cfgo) sync(load func(section string, setting Setting, b []byte) error) (err error) {
-	c.sections = make([]*section, 0, len(c.config))
+	c.originalContent = c.originalContent[:0]
 	defer func() {
 		if err != nil {
 			err = fmt.Errorf("[cfgo] %s", err.Error())
@@ -217,6 +308,18 @@ func (c *Cfgo) sync(load func(section string, setting Setting, b []byte) error) 
 		return
 	}
 
+	// Restore the original configuration
+	defer func() {
+		if err != nil {
+			file, err := os.OpenFile(c.filename, os.O_WRONLY|os.O_SYNC|os.O_TRUNC|os.O_CREATE, 0666)
+			if err != nil {
+				return
+			}
+			defer file.Close()
+			file.Write(c.originalContent)
+		}
+	}()
+
 	// marshal
 	err = c.write()
 	if err != nil {
@@ -231,36 +334,87 @@ func (c *Cfgo) read(load func(section string, setting Setting, b []byte) error) 
 	if err != nil {
 		return
 	}
-	defer file.Close()
-
-	var (
-		r    = bufio.NewReader(file)
-		line = make([]byte, 0, 10)
-	)
-	for ; err == nil; c.readSection(line) {
-		line, _, err = r.ReadLine()
+	c.originalContent, err = ioutil.ReadAll(file)
+	file.Close()
+	if err != nil {
+		return
 	}
-	if err != nil && err != io.EOF {
+
+	c.allConfig = make(map[string]interface{})
+	err = yaml.Unmarshal(c.originalContent, &c.allConfig)
+	if err != nil {
 		return
 	}
 
 	// load config
 	var errs []string
-	for k, v := range c.config {
-		for _, section := range c.sections {
-			if k != section.title {
-				continue
-			}
-			err = load(k, v, section.single)
-			if err != nil {
-				errs = append(errs, err.Error())
+	var single []byte
+	var has = make(map[string]bool, len(c.regConfig))
+	for k, v := range c.allConfig {
+		for kk, vv := range c.regConfig {
+			if k == kk {
+				has[k] = true
+				if single, err = yaml.Marshal(v); err != nil {
+					return
+				}
+				// load
+				if err = load(kk, vv, single); err != nil {
+					errs = append(errs, err.Error())
+				}
+				break
 			}
 		}
 	}
+
 	if len(errs) > 0 {
 		return fmt.Errorf("%s", strings.Join(errs, string(lineend)))
 	}
+
+	var section *Section
+	c.regSections = make([]*Section, 0, len(c.regConfig))
+	for k, v := range c.regConfig {
+		if section, err = createSection(k, v); err != nil {
+			delete(c.allConfig, k)
+			return
+		}
+		var vv interface{}
+		if err = yaml.Unmarshal(section.single, &vv); err != nil {
+			delete(c.allConfig, k)
+			return
+		}
+		c.allConfig[k] = vv
+		c.regSections = append(c.regSections, section)
+	}
+	sort.Sort(c.regSections)
+
+	c.otherSections = make([]*Section, 0, len(c.allConfig)-len(has))
+	for k, v := range c.allConfig {
+		if has[k] {
+			continue
+		}
+		if section, err = createSection(k, v); err != nil {
+			return
+		}
+		c.otherSections = append(c.otherSections, section)
+	}
+	sort.Sort(c.otherSections)
 	return nil
+}
+
+func createSection(k string, v interface{}) (section *Section, err error) {
+	section = &Section{
+		title: k,
+	}
+	var single []byte
+	if single, err = yaml.Marshal(v); err != nil {
+		return
+	}
+	section.single = single
+	var united = bytes.Replace(single, []byte("\r\n"), []byte("\n"), -1)
+	united = bytes.Replace(united, []byte("\n"), indent, -1)
+	united = append([]byte(k+":"+string(lineend)+"  "), united[:len(united)-2]...)
+	section.united = united
+	return
 }
 
 func (c *Cfgo) write() error {
@@ -269,39 +423,34 @@ func (c *Cfgo) write() error {
 		return err
 	}
 	defer file.Close()
-LOOP:
-	for k, v := range c.config {
-		single, err := yaml.Marshal(v)
-		if err != nil {
-			return err
-		}
-		united := bytes.Replace(single, []byte("\r\n"), []byte("\n"), -1)
-		united = bytes.Replace(united, []byte("\n"), indent, -1)
-		united = append([]byte("  "), united[:len(united)-2]...)
-		for _, section := range c.sections {
-			if section.title == k {
-				section.single = single
-				section.united = united
-				continue LOOP
-			}
-		}
-		c.sections = append(c.sections, &section{
-			title:  k,
-			single: single,
-			united: united,
-		})
-	}
-	sort.Sort(c.sections)
+
 	content := bytes.NewBuffer(c.content[:0])
 	w := io.MultiWriter(file, content)
-	for i, section := range c.sections {
+	for i, section := range c.regSections {
 		if i != 0 {
 			_, err = w.Write(lineend)
 			if err != nil {
 				return err
 			}
 		}
-		_, err = w.Write(append([]byte(section.title+":"), lineend...))
+		_, err = w.Write(section.united)
+		if err != nil {
+			return err
+		}
+	}
+
+	for i, section := range c.otherSections {
+		if i == 0 {
+			_, err = w.Write(lineend)
+			if err != nil {
+				return err
+			}
+			_, err = w.Write(dividingLine)
+			if err != nil {
+				return err
+			}
+		}
+		_, err = w.Write(lineend)
 		if err != nil {
 			return err
 		}
@@ -310,50 +459,32 @@ LOOP:
 			return err
 		}
 	}
+
 	c.content = content.Bytes()
 	return nil
 }
 
-func (c *Cfgo) readSection(line []byte) {
-	if len(line) > 0 && !bytes.HasPrefix(line, []byte(" ")) {
-		if line[len(line)-1] == ':' {
-			line = bytes.TrimSpace(line)
-			line = bytes.TrimRight(line, ":")
-			c.sections = append(c.sections, &section{title: string(line)})
-		}
-		return
-	}
-	last := len(c.sections) - 1
-	if last == -1 {
-		return
-	}
-	line = append(line, lineend...)
-	c.sections[last].united = append(c.sections[last].united, line...)
-	line = bytes.TrimPrefix(line, []byte("  "))
-	c.sections[last].single = append(c.sections[last].single, line...)
-}
-
 type (
-	sections []*section
-	section  struct {
+	Sections []*Section
+	Section  struct {
 		title  string
-		united []byte
 		single []byte
+		united []byte
 	}
 )
 
 // Len is the number of elements in the collection.
-func (s sections) Len() int {
+func (s Sections) Len() int {
 	return len(s)
 }
 
 // Less reports whether the element with
 // index i should sort before the element with index j.
-func (s sections) Less(i, j int) bool {
+func (s Sections) Less(i, j int) bool {
 	return s[i].title < s[j].title
 }
 
 // Swap swaps the elements with indexes i and j.
-func (s sections) Swap(i, j int) {
+func (s Sections) Swap(i, j int) {
 	s[i], s[j] = s[j], s[i]
 }

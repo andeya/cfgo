@@ -26,5 +26,3 @@ _testmain.go
 *nohup.out
 *.sublime-project
 *.sublime-workspace
-
-example/config/*

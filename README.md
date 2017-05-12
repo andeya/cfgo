@@ -67,7 +67,7 @@ func init() {
 	}
 	// or
 	// cfgo.MustReg("section1", strucePtr1)
-	fmt.Printf("strucePtr1(config.yaml): %+v\n\n", strucePtr1)
+	fmt.Printf("strucePtr1(config/config.yaml): %+v\n\n", strucePtr1)
 }
 
 ```
@@ -107,7 +107,7 @@ func init() {
 	}
 	// or
 	// cfgo.MustReg("section2", strucePtr2)
-	fmt.Printf("strucePtr2(config.yaml): %+v\n\n", strucePtr2)
+	fmt.Printf("strucePtr2(config/config.yaml): %+v\n\n", strucePtr2)
 }
 
 ```
@@ -149,22 +149,22 @@ func main() {
 	// or
 	// cfgo.MustReg("section", strucePtr)
 
-	fmt.Printf("strucePtr(config.yaml): %+v\n\n", strucePtr)
+	fmt.Printf("strucePtr(config/config.yaml): %+v\n\n", strucePtr)
 
 	// output: config/config3.yaml
 	c3 := cfgo.MustGet("config/config3.yaml")
 	c3.MustReg("section", strucePtr)
-	fmt.Printf("strucePtr(config3.yaml): %+v\n\n", strucePtr)
+	fmt.Printf("strucePtr(config/config3.yaml): %+v\n\n", strucePtr)
 
-	fmt.Printf("-----------------------------------------------------------\n\n")
+	fmt.Printf(" ----------------------------------------------------------- \n\n")
 
-	fmt.Printf("config.yaml content:\n%s\n\n", c.Content())
+	fmt.Printf("config/config.yaml content:\n%s\n\n", c.Content())
 	// or
 	// fmt.Printf("config.yaml content:\n%s\n\n", cfgo.Content())
 
-	fmt.Printf("-----------------------------------------------------------\n\n")
+	fmt.Printf(" ----------------------------------------------------------- \n\n")
 
-	fmt.Printf("config3.yaml content:\n%s\n\n", c3.Content())
+	fmt.Printf("config/config3.yaml content:\n%s\n\n", c3.Content())
 }
 ```
 
@@ -172,20 +172,21 @@ print:
 
 ```
 module_1: T1 reload do some thing...
-strucePtr1(config.yaml): &{F:1 B:2}
+strucePtr1(config/config.yaml): &{F:1 B:2}
 
 module_2: T2 reload do some thing...
-strucePtr2(config.yaml): &{X:xxx Y:[x y z] Z:[1 2 3] N:false}
+strucePtr2(config/config.yaml): &{X:xxx Y:[x y z] Z:[1 2 3] N:false}
+
+=== RUN   Test1
+main T reload do some thing...
+strucePtr(config/config.yaml): &{C:c T1:{F:0 B:2}}
 
 main T reload do some thing...
-strucePtr(config.yaml): &{C:c T1:{F:0 B:2}}
+strucePtr(config/config3.yaml): &{C:c T1:{F:0 B:2}}
 
-main T reload do some thing...
-strucePtr(config3.yaml): &{C:c T1:{F:0 B:2}}
+ ----------------------------------------------------------- 
 
------------------------------------------------------------
-
-config.yaml content:
+config/config.yaml content:
 section:
   c: c
   t1:
@@ -205,13 +206,19 @@ section2:
   "n": false
 
 
------------------------------------------------------------
+ ----------------------------------------------------------- 
 
-config3.yaml content:
+config/config3.yaml content:
 section:
   c: c
   t1:
     b: 2
+
+# ------------------------- non-automated configuration -------------------------
+
+custom:
+  true
+
 ```
 
 output `config/config.yaml`:
@@ -244,5 +251,95 @@ section:
   c: c
   t1:
     b: 2
+
+```
+
+# custom
+
+Cfgo allows to custom non-automated configuration in yaml file.
+
+example `config/mixed_config.yaml`:
+
+```
+# cfgo-register section
+register:
+  auto: true
+
+# your custom section
+custom: true
+
+```
+
+golang code main.go:
+
+```
+package main
+
+import (
+	"fmt"
+
+	"github.com/henrylee2cn/cfgo"
+)
+
+type M struct {
+	Auto bool
+}
+
+func (m *M) Reload(bind cfgo.BindFunc) error {
+	return bind()
+}
+
+func main() {
+	m := new(M)
+	mixed := cfgo.MustGet("config/mixed_config.yaml")
+	mixed.MustReg("register", m)
+
+	fmt.Printf("config/mixed_config.yaml content:\n%s\n\n", mixed.Content())
+	fmt.Printf("config/mixed_config.yaml config m:\n%#v\n\n", m)
+	{
+		custom, _ := mixed.GetConfig("custom")
+		fmt.Printf("config/mixed_config.yaml GetConfig 'custom':\n%#v\n\n", custom)
+	}
+	{
+		var custom bool
+		_ = mixed.BindConfig("custom", &custom)
+		fmt.Printf("config/mixed_config.yaml BindConfig 'custom':\n%#v\n\n", custom)
+	}
+}
+```
+
+Run the command `go run main.go`, will print:
+
+```
+config/mixed_config.yaml content:
+register:
+  auto: true
+
+# ------------------------- non-automated configuration -------------------------
+
+custom:
+  true
+
+
+config/mixed_config.yaml config m:
+&main.M{Auto:true}
+
+config/mixed_config.yaml GetConfig 'custom':
+true
+
+config/mixed_config.yaml BindConfig 'custom':
+true
+```
+
+now `config/mixed_config.yaml` content auto-change to:
+
+```
+register:
+  auto: true
+
+# ------------------------- non-automated configuration -------------------------
+
+custom:
+  true
 
 ```
