@@ -295,13 +295,13 @@ func main() {
 	fmt.Printf("config/mixed_config.yaml content:\n%s\n\n", mixed.Content())
 	fmt.Printf("config/mixed_config.yaml config m:\n%#v\n\n", m)
 	{
-		custom, _ := mixed.GetConfig("custom")
-		fmt.Printf("config/mixed_config.yaml GetConfig 'custom':\n%#v\n\n", custom)
+		custom, _ := mixed.GetSection("custom")
+		fmt.Printf("config/mixed_config.yaml GetSection 'custom':\n%#v\n\n", custom)
 	}
 	{
 		var custom bool
-		_ = mixed.BindConfig("custom", &custom)
-		fmt.Printf("config/mixed_config.yaml BindConfig 'custom':\n%#v\n\n", custom)
+		_ = mixed.BindSection("custom", &custom)
+		fmt.Printf("config/mixed_config.yaml BindSection 'custom':\n%#v\n\n", custom)
 	}
 }
 ```
@@ -322,10 +322,10 @@ custom:
 config/mixed_config.yaml config m:
 &main.M{Auto:true}
 
-config/mixed_config.yaml GetConfig 'custom':
+config/mixed_config.yaml GetSection 'custom':
 true
 
-config/mixed_config.yaml BindConfig 'custom':
+config/mixed_config.yaml BindSection 'custom':
 true
 ```
 

@@ -62,24 +62,24 @@ func Default() *Cfgo {
 }
 
 // MustReg is similar to Reg(), but panic if having error.
-func MustReg(section string, structPtr Syncer) {
+func MustReg(section string, structPtr Config) {
 	Default().MustReg(section, structPtr)
 }
 
 // Reg registers config section to default config file 'config/config.yaml'.
 // Automatic callback Reload() to load or reload config.
-func Reg(section string, structPtr Syncer) error {
+func Reg(section string, structPtr Config) error {
 	return Default().Reg(section, structPtr)
 }
 
-// GetConfig returns default config section.
-func GetConfig(section string) (interface{}, bool) {
-	return Default().GetConfig(section)
+// GetSection returns default config section.
+func GetSection(section string) (interface{}, bool) {
+	return Default().GetSection(section)
 }
 
-// BindConfig returns default config section copy.
-func BindConfig(section string, v interface{}) error {
-	return Default().BindConfig(section, v)
+// BindSection returns default config section copy.
+func BindSection(section string, v interface{}) error {
+	return Default().BindSection(section, v)
 }
 
 // Content returns default yaml config bytes.
@@ -114,14 +114,14 @@ type (
 		filename        string
 		originalContent []byte
 		content         []byte
-		regConfig       map[string]Syncer
-		otherConfig     map[string]interface{}
+		regConfigs      map[string]Config
+		extraConfigs    map[string]interface{}
 		regSections     Sections
-		otherSections   Sections
+		extraSections   Sections
 		lc              sync.RWMutex
 	}
-	// Syncer must be struct pointer
-	Syncer interface {
+	// Config must be struct pointer
+	Config interface {
 		// load or reload config to app
 		Reload(bind BindFunc) error
 	}
@@ -167,10 +167,10 @@ func Get(filename string) (*Cfgo, error) {
 		filename:        abs,
 		originalContent: []byte{},
 		content:         []byte{},
-		regConfig:       make(map[string]Syncer),
-		otherConfig:     make(map[string]interface{}),
+		regConfigs:      make(map[string]Config),
+		extraConfigs:    make(map[string]interface{}),
 		regSections:     make([]*Section, 0, 1),
-		otherSections:   make([]*Section, 0),
+		extraSections:   make([]*Section, 0),
 	}
 	err = c.reload()
 	if err != nil {
@@ -181,7 +181,7 @@ func Get(filename string) (*Cfgo, error) {
 }
 
 // MustReg is similar to Reg(), but panic if having error.
-func (c *Cfgo) MustReg(section string, structPtr Syncer) {
+func (c *Cfgo) MustReg(section string, structPtr Config) {
 	err := c.Reg(section, structPtr)
 	if err != nil {
 		panic(err)
@@ -190,7 +190,7 @@ func (c *Cfgo) MustReg(section string, structPtr Syncer) {
 
 // Reg registers config section to config file.
 // Automatic callback Reload() to load or reload config.
-func (c *Cfgo) Reg(section string, structPtr Syncer) error {
+func (c *Cfgo) Reg(section string, structPtr Config) error {
 	c.lc.Lock()
 	defer c.lc.Unlock()
 
@@ -198,14 +198,14 @@ func (c *Cfgo) Reg(section string, structPtr Syncer) error {
 	if t.Kind() != reflect.Ptr || t.Elem().Kind() != reflect.Struct {
 		return fmt.Errorf("[cfgo] not a struct pointer:\nsection: %s\nstructPtr: %s", section, t.String())
 	}
-	if s, ok := c.regConfig[section]; ok {
+	if s, ok := c.regConfigs[section]; ok {
 		return fmt.Errorf("[cfgo] multiple section: %s\nexisted: %s | adding: %s", section, reflect.TypeOf(s).String(), t.String())
 	}
 
-	c.regConfig[section] = structPtr
+	c.regConfigs[section] = structPtr
 
 	// sync config
-	return c.sync(func(s string, _ Syncer, b []byte) error {
+	return c.sync(func(s string, _ Config, b []byte) error {
 		if s == section {
 			return structPtr.Reload(func() error {
 				return yaml.Unmarshal(b, structPtr)
@@ -215,19 +215,19 @@ func (c *Cfgo) Reg(section string, structPtr Syncer) error {
 	})
 }
 
-// GetConfig returns yaml config section.
-func (c *Cfgo) GetConfig(section string) (interface{}, bool) {
+// GetSection returns yaml config section.
+func (c *Cfgo) GetSection(section string) (interface{}, bool) {
 	c.lc.RLock()
 	defer c.lc.RUnlock()
-	if v, ok := c.regConfig[section]; ok {
+	if v, ok := c.regConfigs[section]; ok {
 		return v, ok
 	}
-	v, ok := c.otherConfig[section]
+	v, ok := c.extraConfigs[section]
 	return v, ok
 }
 
-// BindConfig returns yaml config section copy.
-func (c *Cfgo) BindConfig(section string, v interface{}) error {
+// BindSection returns yaml config section copy.
+func (c *Cfgo) BindSection(section string, v interface{}) error {
 	c.lc.RLock()
 	defer c.lc.RUnlock()
 	for _, s := range c.regSections {
@@ -235,7 +235,7 @@ func (c *Cfgo) BindConfig(section string, v interface{}) error {
 			return yaml.Unmarshal(s.single, v)
 		}
 	}
-	for _, s := range c.otherSections {
+	for _, s := range c.extraSections {
 		if section == s.title {
 			return yaml.Unmarshal(s.single, v)
 		}
@@ -258,7 +258,7 @@ func (c *Cfgo) Reload() error {
 }
 
 func (c *Cfgo) reload() error {
-	return c.sync(func(_ string, setting Syncer, b []byte) error {
+	return c.sync(func(_ string, setting Config, b []byte) error {
 		return setting.Reload(func() error {
 			return yaml.Unmarshal(b, setting)
 		})
@@ -268,12 +268,12 @@ func (c *Cfgo) reload() error {
 func (c *Cfgo) clean() {
 	c.originalContent = c.originalContent[:0]
 	c.content = c.content[:0]
-	c.otherConfig = make(map[string]interface{})
+	c.extraConfigs = make(map[string]interface{})
 	c.regSections = c.regSections[:0]
-	c.otherSections = c.otherSections[:0]
+	c.extraSections = c.extraSections[:0]
 }
 
-func (c *Cfgo) sync(load func(section string, setting Syncer, b []byte) error) (err error) {
+func (c *Cfgo) sync(load func(section string, setting Config, b []byte) error) (err error) {
 	c.clean()
 	defer func() {
 		if err != nil {
@@ -313,7 +313,7 @@ func (c *Cfgo) sync(load func(section string, setting Syncer, b []byte) error) (
 	return nil
 }
 
-func (c *Cfgo) read(load func(section string, setting Syncer, b []byte) error) (err error) {
+func (c *Cfgo) read(load func(section string, setting Config, b []byte) error) (err error) {
 	file, err := os.OpenFile(c.filename, os.O_RDONLY|os.O_SYNC|os.O_CREATE, 0666)
 	if err != nil {
 		return
@@ -324,7 +324,7 @@ func (c *Cfgo) read(load func(section string, setting Syncer, b []byte) error) (
 		return
 	}
 
-	err = yaml.Unmarshal(c.originalContent, &c.otherConfig)
+	err = yaml.Unmarshal(c.originalContent, &c.extraConfigs)
 	if err != nil {
 		return
 	}
@@ -332,10 +332,10 @@ func (c *Cfgo) read(load func(section string, setting Syncer, b []byte) error) (
 	// load config
 	var errs []string
 	var single []byte
-	for k, v := range c.otherConfig {
-		for kk, vv := range c.regConfig {
+	for k, v := range c.extraConfigs {
+		for kk, vv := range c.regConfigs {
 			if k == kk {
-				delete(c.otherConfig, k)
+				delete(c.extraConfigs, k)
 				if single, err = yaml.Marshal(v); err != nil {
 					return
 				}
@@ -353,8 +353,8 @@ func (c *Cfgo) read(load func(section string, setting Syncer, b []byte) error) (
 	}
 
 	var section *Section
-	c.regSections = make([]*Section, 0, len(c.regConfig))
-	for k, v := range c.regConfig {
+	c.regSections = make([]*Section, 0, len(c.regConfigs))
+	for k, v := range c.regConfigs {
 		if section, err = createSection(k, v); err != nil {
 			return
 		}
@@ -362,14 +362,14 @@ func (c *Cfgo) read(load func(section string, setting Syncer, b []byte) error) (
 	}
 	sort.Sort(c.regSections)
 
-	c.otherSections = make([]*Section, 0, len(c.otherConfig))
-	for k, v := range c.otherConfig {
+	c.extraSections = make([]*Section, 0, len(c.extraConfigs))
+	for k, v := range c.extraConfigs {
 		if section, err = createSection(k, v); err != nil {
 			return
 		}
-		c.otherSections = append(c.otherSections, section)
+		c.extraSections = append(c.extraSections, section)
 	}
-	sort.Sort(c.otherSections)
+	sort.Sort(c.extraSections)
 	return nil
 }
 
@@ -411,7 +411,7 @@ func (c *Cfgo) write() error {
 		}
 	}
 
-	for i, section := range c.otherSections {
+	for i, section := range c.extraSections {
 		if i == 0 {
 			_, err = w.Write(lineend)
 			if err != nil {
