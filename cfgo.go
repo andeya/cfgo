@@ -205,14 +205,26 @@ func (c *Cfgo) Reg(section string, structPtr Config) error {
 	c.regConfigs[section] = structPtr
 
 	// sync config
-	return c.sync(func(s string, _ Config, b []byte) error {
+	var init bool
+	var load = func(s string, _ Config, b []byte) error {
 		if s == section {
+			init = true
 			return structPtr.Reload(func() error {
 				return yaml.Unmarshal(b, structPtr)
 			})
 		}
 		return nil
-	})
+	}
+	err := c.sync(load)
+	if err != nil {
+		return err
+	}
+	if !init {
+		err = structPtr.Reload(func() error {
+			return nil
+		})
+	}
+	return err
 }
 
 // GetSection returns yaml config section.
