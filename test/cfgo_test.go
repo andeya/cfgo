@@ -78,4 +78,8 @@ func Test2(t *testing.T) {
 		_ = mixed.BindSection("custom", &custom)
 		fmt.Printf("config/mixed_config.yaml BindSection 'custom':\n%#v\n\n", custom)
 	}
+	ok := mixed.IsReg("register")
+	fmt.Printf("mixed.IsReg(\"register\"): %v\n\n", ok)
+	ok = mixed.IsReg("test")
+	fmt.Printf("mixed.IsReg(\"test\"): %v\n\n", ok)
 }

@@ -72,6 +72,11 @@ func Reg(section string, structPtr Config) error {
 	return Default().Reg(section, structPtr)
 }
 
+// IsReg to determine whether the section is registered.
+func IsReg(section string) bool {
+	return Default().IsReg(section)
+}
+
 // GetSection returns default config section.
 func GetSection(section string) (interface{}, bool) {
 	return Default().GetSection(section)
@@ -225,6 +230,14 @@ func (c *Cfgo) Reg(section string, structPtr Config) error {
 		})
 	}
 	return err
+}
+
+// IsReg to determine whether the section is registered.
+func (c *Cfgo) IsReg(section string) bool {
+	c.lc.RLock()
+	defer c.lc.RUnlock()
+	_, ok := c.regConfigs[section]
+	return ok
 }
 
 // GetSection returns yaml config section.
