@@ -61,6 +61,11 @@ func Default() *Cfgo {
 	return defaultCfgo
 }
 
+// Filename returns default config file name.
+func Filename() string {
+	return defaultCfgo.Filename()
+}
+
 // MustReg is similar to Reg(), but panic if having error.
 func MustReg(section string, structPtr Config) {
 	Default().MustReg(section, structPtr)
@@ -183,6 +188,11 @@ func Get(filename string) (*Cfgo, error) {
 	}
 	cfgos[abs] = c
 	return c, nil
+}
+
+// Filename returns the config file name.
+func (c *Cfgo) Filename() string {
+	return c.filename
 }
 
 // MustReg is similar to Reg(), but panic if having error.
