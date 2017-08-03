@@ -1,3 +1,8 @@
+section:
+  c: c
+  t1:
+    b: 2
+
 section1:
   a: 1
   b: 2
@@ -10,10 +15,3 @@ section2:
   - 2
   - 3
   "n": false
-
-# ------------------------- non-automated configuration -------------------------
-
-section:
-  c: c
-  t1:
-    b: 2

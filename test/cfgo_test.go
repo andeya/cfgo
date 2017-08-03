@@ -38,7 +38,7 @@ func Test1(t *testing.T) {
 
 	// output: config/config3.yaml
 
-	c3 := cfgo.MustGet("config/config3.yaml")
+	c3 := cfgo.MustGet("config/config3.yaml", true)
 	c3.MustReg("section", structPtr)
 
 	fmt.Printf("structPtr(config/config3.yaml): %+v\n\n", structPtr)

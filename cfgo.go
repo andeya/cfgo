@@ -128,6 +128,7 @@ type (
 		extraConfigs    map[string]interface{}
 		regSections     Sections
 		extraSections   Sections
+		allowAppsShare  bool
 		lc              sync.RWMutex
 	}
 	// Config must be struct pointer
@@ -153,8 +154,8 @@ var (
 )
 
 // MustGet creates a new Cfgo
-func MustGet(filename string) *Cfgo {
-	c, err := Get(filename)
+func MustGet(filename string, allowAppsShare ...bool) *Cfgo {
+	c, err := Get(filename, allowAppsShare...)
 	if err != nil {
 		panic(err)
 	}
@@ -162,7 +163,7 @@ func MustGet(filename string) *Cfgo {
 }
 
 // Get creates or gets a Cfgo.
-func Get(filename string) (*Cfgo, error) {
+func Get(filename string, allowAppsShare ...bool) (*Cfgo, error) {
 	abs, err := filepath.Abs(filename)
 	if err != nil {
 		return nil, fmt.Errorf("[cfgo] %s", err.Error())
@@ -181,6 +182,9 @@ func Get(filename string) (*Cfgo, error) {
 		extraConfigs:    make(map[string]interface{}),
 		regSections:     make([]*Section, 0, 1),
 		extraSections:   make([]*Section, 0),
+	}
+	if len(allowAppsShare) > 0 && allowAppsShare[0] {
+		c.allowAppsShare = true
 	}
 	err = c.reload()
 	if err != nil {
@@ -433,37 +437,58 @@ func (c *Cfgo) write() error {
 
 	content := bytes.NewBuffer(c.content)
 	w := io.MultiWriter(file, content)
-	for i, section := range c.regSections {
-		if i != 0 {
-			_, err = w.Write(lineend)
-			if err != nil {
-				return err
-			}
-		}
-		_, err = w.Write(section.united)
-		if err != nil {
-			return err
-		}
-	}
 
-	for i, section := range c.extraSections {
-		if i == 0 {
+	if c.allowAppsShare {
+		// Allow multiple processes share
+
+		allSections := append(c.regSections, c.extraSections...)
+		sort.Sort(allSections)
+		for i, section := range allSections {
+			if i != 0 {
+				_, err = w.Write(lineend)
+				if err != nil {
+					return err
+				}
+			}
+			_, err = w.Write(section.united)
+			if err != nil {
+				return err
+			}
+		}
+	} else {
+		// Only single process
+
+		for i, section := range c.regSections {
+			if i != 0 {
+				_, err = w.Write(lineend)
+				if err != nil {
+					return err
+				}
+			}
+			_, err = w.Write(section.united)
+			if err != nil {
+				return err
+			}
+		}
+		for i, section := range c.extraSections {
+			if i == 0 {
+				_, err = w.Write(lineend)
+				if err != nil {
+					return err
+				}
+				_, err = w.Write(dividingLine)
+				if err != nil {
+					return err
+				}
+			}
 			_, err = w.Write(lineend)
 			if err != nil {
 				return err
 			}
-			_, err = w.Write(dividingLine)
+			_, err = w.Write(section.united)
 			if err != nil {
 				return err
 			}
-		}
-		_, err = w.Write(lineend)
-		if err != nil {
-			return err
-		}
-		_, err = w.Write(section.united)
-		if err != nil {
-			return err
 		}
 	}
 
