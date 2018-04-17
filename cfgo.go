@@ -63,7 +63,12 @@ func Default() *Cfgo {
 
 // Filename returns default config file name.
 func Filename() string {
-	return defaultCfgo.Filename()
+	return Default().Filename()
+}
+
+// AllowAppsShare allows other applications to share the configuration file.
+func AllowAppsShare(allow bool) {
+	Default().AllowAppsShare(allow)
 }
 
 // MustReg is similar to Reg(), but panic if having error.
@@ -197,6 +202,11 @@ func Get(filename string, allowAppsShare ...bool) (*Cfgo, error) {
 // Filename returns the config file name.
 func (c *Cfgo) Filename() string {
 	return c.filename
+}
+
+// AllowAppsShare allows other applications to share the configuration file.
+func (c *Cfgo) AllowAppsShare(allow bool) {
+	c.allowAppsShare = allow
 }
 
 // MustReg is similar to Reg(), but panic if having error.
