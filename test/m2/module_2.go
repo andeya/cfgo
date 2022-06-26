@@ -3,7 +3,7 @@ package m2
 import (
 	"fmt"
 
-	"github.com/henrylee2cn/cfgo"
+	"github.com/andeya/cfgo"
 )
 
 type T2 struct {
@@ -20,9 +20,9 @@ func (t *T2) Reload(bind cfgo.BindFunc) error {
 
 func init() {
 	structPtr2 := &T2{
-		X: "xxx",                   //default value
-		Y: []string{"x", "y", "z"}, //default value
-		Z: []int{1, 2, 3},          //default value
+		X: "xxx",                   // default value
+		Y: []string{"x", "y", "z"}, // default value
+		Z: []int{1, 2, 3},          // default value
 	}
 	{
 		c := cfgo.MustGet("config/config.yaml")

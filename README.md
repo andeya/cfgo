@@ -1,4 +1,4 @@
-# cfgo  [![GoDoc](https://godoc.org/github.com/tsuna/gohbase?status.png)](https://godoc.org/github.com/henrylee2cn/cfgo)
+# cfgo  [![GoDoc](https://godoc.org/github.com/tsuna/gohbase?status.png)](https://godoc.org/github.com/andeya/cfgo)
 
 Cfgo from the YAML document, bi-directional synchronous multi-module configuration.
 
@@ -43,7 +43,7 @@ package m1
 import (
 	"fmt"
 
-	"github.com/henrylee2cn/cfgo"
+	"github.com/andeya/cfgo"
 )
 
 type T1 struct {
@@ -80,7 +80,7 @@ package m2
 import (
 	"fmt"
 
-	"github.com/henrylee2cn/cfgo"
+	"github.com/andeya/cfgo"
 )
 
 type T2 struct {
@@ -120,9 +120,9 @@ package main
 import (
 	"fmt"
 
-	"github.com/henrylee2cn/cfgo"
-	"github.com/henrylee2cn/cfgo/example/m1"
-	_ "github.com/henrylee2cn/cfgo/example/m2"
+	"github.com/andeya/cfgo"
+	"github.com/andeya/cfgo/example/m1"
+	_ "github.com/andeya/cfgo/example/m2"
 )
 
 type T struct {
@@ -276,7 +276,7 @@ package main
 import (
 	"fmt"
 
-	"github.com/henrylee2cn/cfgo"
+	"github.com/andeya/cfgo"
 )
 
 type M struct {

@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/henrylee2cn/cfgo"
-	"github.com/henrylee2cn/cfgo/test/m1"
-	_ "github.com/henrylee2cn/cfgo/test/m2"
+	"github.com/andeya/cfgo"
+	"github.com/andeya/cfgo/test/m1"
+	_ "github.com/andeya/cfgo/test/m2"
 )
 
 type T struct {
@@ -23,7 +23,7 @@ func Test1(t *testing.T) {
 	structPtr := &T{
 		C: "c",
 		T1: m1.T1{
-			B: 2, //default value
+			B: 2, // default value
 		},
 	}
 
